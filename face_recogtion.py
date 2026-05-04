@@ -16,24 +16,25 @@ class Record:
         return f'Record id: {self.id} - {self.name}'
 
 def register_face(path_imageFace, name):
-    pass
-    
     # process face embedding
     embedding = embed_face_image(path_imageFace)
     
     # check if face is in file already
 
-
     # append face ebedding with ID and name
-    registry = get_all_records()
-    max_id = max(record.id for record in registry)
-    id = max_id + 1
-    record = Record(id, name, embedding)
-    load_record(record)
-    return True
+    try:
+        registry = get_all_records()
+        max_id = max(record.id for record in registry)
+        id = max_id + 1
+        record = Record(id, name, embedding)
+        load_record(record)
+        return record
+    except:
+        print('ERRO EM REGISTRAR FACE')
 
 def clear_registry():
     os.remove(REGISTER_FILE)
+    get_all_records()
 
 def similarity(emb_1, emb_2):
     if len(emb_1) != len(emb_2):
@@ -73,12 +74,30 @@ def get_record_by_id(id):
         return False
     return records[0]
 
+
+'''
+return the record most similar to received embedding of a face given
+'''
 def get_record_by_emb(embeding, treshhold = 0.6):
     registry = get_all_records()
-    for record in registry:
-        if similarity(embeding, record.embedding) >= treshhold:
-            return record
-    return False # no record found
+    best_i = -1
+    best_similarity = -500
+    for i, record in enumerate(registry):
+        current_similarity = similarity(embeding, record.embedding)
+        if current_similarity >= best_similarity and current_similarity >= treshhold:
+            best_i = i
+            best_similarity = current_similarity
+    
+    if best_i != -1:
+        return registry[best_i]
+    else:
+        return False # no record found
+
+
+def get_record_by_face_picture(path_imageFace):
+    embeding = embed_face_image(path_imageFace)
+    return get_record_by_emb(embeding)
+
 
 def get_records_by_name(name):
     # read registry 

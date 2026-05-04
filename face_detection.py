@@ -64,8 +64,8 @@ def smooth_bboxes(list_bbox, outlier_threshold=10, verbose=False):
 
 
 # converts a list of RGB frames into Grayscale
-def to_gray_scale(list_frames):
-    return [cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) for frame in list_frames]
+def to_gray_scale(frame):
+    return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
 
 # receive an image e return a list of all bbox of faces detected
@@ -90,9 +90,9 @@ def get_frames_window(capture, window_size=10):
             list_frames.append(frame)
     return list_frames
 
-# receive a list of frames and rreturn the resized frame
-def get_resized(list_frames, resize_factor):
-    return [cv2.resize(frame, (int(frame.shape[1] * resize_factor), int(frame.shape[0] * resize_factor))) for frame in list_frames]
+# receive a frame and rreturn the resized frame
+def get_resized(frame, resize_factor):
+    return cv2.resize(frame, (int(frame.shape[1] * resize_factor), int(frame.shape[0] * resize_factor)))
 
 
 # receives a list of frames and returns the main box of face in this frames window
@@ -111,3 +111,89 @@ def get_face_bbox_framesWindow(list_framesWindow, resize_factor = 0.5):
     bbox_face = smooth_bboxes(list_bbox)
     return bbox_face
 
+
+
+# ------------------------
+# funções atualizadas!
+# ------------------------
+
+
+
+
+
+
+
+def capture_face(frame, face_path): # salva o frame no path
+    cv2.imwrite(face_path, frame)
+    print(f'Frame salvo em: {face_path}')
+    return True
+
+
+
+
+
+
+# MEDIAPIPE para visualização de piscada
+import cv2
+import mediapipe as mp
+
+from mediapipe.tasks.python import vision
+from mediapipe.tasks import python
+model_path = "face_landmarker.task"
+
+base_options = python.BaseOptions(model_asset_path=model_path)
+
+options = vision.FaceLandmarkerOptions(
+    base_options=base_options,
+    output_face_blendshapes=True,
+    output_facial_transformation_matrixes=False,
+    num_faces=1
+)
+
+detector = vision.FaceLandmarker.create_from_options(options)
+
+
+def get_eye_state(frame, resize_ratio=0.3): # retorna o estado do olho  OPEN, CLOSED, NOT_DETECTED
+    # frame_process = to_gray_scale(frame)
+    frame_process = get_resized(frame, resize_ratio)
+
+    frame_process = cv2.cvtColor(frame_process, cv2.COLOR_BGR2RGB)
+
+    mp_image = mp.Image(
+        image_format=mp.ImageFormat.SRGB,
+        data=frame_process
+    )
+    result = detector.detect(mp_image)
+
+    if result.face_blendshapes:
+        # índices dos olhos fechando (EAR-like via blendshapes)
+            left_eye = result.face_blendshapes[0][9].score
+            right_eye = result.face_blendshapes[0][10].score
+
+            avg = (left_eye + right_eye) / 2
+
+            if avg > 0.6:
+                return 'CLOSED'
+            else:# < 0.2:
+                return 'OPEN'
+
+    return 'NOT_DETECTED'  # implementar
+
+
+def detect_face(frame, resize_ratio = 0.3):
+
+    frame_process = get_resized(frame, resize_ratio)
+    frame_process = cv2.cvtColor(frame_process, cv2.COLOR_BGR2RGB)
+
+    mp_image = mp.Image(
+        image_format=mp.ImageFormat.SRGB,
+        data=frame_process
+    )
+    result = detector.detect(mp_image)
+
+    if len(result.face_landmarks) > 0:
+        return True  # implementar
+    else:
+        return False
+
+### --------------------------------------------------------------------------------------------
